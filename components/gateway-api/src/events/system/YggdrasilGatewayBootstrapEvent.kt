@@ -1,0 +1,3 @@
+package com.kasukusakura.yggdrasilgateway.api.events.system
+
+public object YggdrasilGatewayBootstrapEvent

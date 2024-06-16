@@ -1,0 +1,49 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '2.0.0' apply false
+//    id 'com.github.johnrengelman.shadow' version '8.1.1'
+//    id 'maven-publish'
+}
+
+allprojects {
+
+    repositories {
+        mavenCentral()
+    }
+
+    pluginManager.withPlugin('org.jetbrains.kotlin.jvm') {
+        dependencies {
+            api 'org.jetbrains:annotations:24.1.0'
+            api 'org.slf4j:slf4j-api:2.0.13'
+            api "org.jetbrains.kotlin:kotlin-reflect"
+            api 'org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.7.0'
+            api 'org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1'
+
+            testImplementation 'org.jetbrains.kotlin:kotlin-test'
+            testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm:1.8.1'
+            testImplementation 'ch.qos.logback:logback-classic:1.5.6'
+        }
+
+        test {
+            useJUnitPlatform()
+//            jvmArgs('-Djava.lang.invoke.MethodHandle.DEBUG_NAMES=true')
+        }
+
+        kotlin {
+            explicitApi()
+            jvmToolchain(21)
+        }
+
+        sourceSets {
+            main {
+                java.setSrcDirs(files('srcJava'))
+                resources.setSrcDirs(files('res'))
+                kotlin.setSrcDirs(files('src'))
+            }
+            test {
+                java.setSrcDirs(files('testJava'))
+                resources.setSrcDirs(files('testRes'))
+                kotlin.setSrcDirs(files('test'))
+            }
+        }
+    }
+}
