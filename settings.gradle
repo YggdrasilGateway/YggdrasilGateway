@@ -5,4 +5,5 @@ rootProject.name = 'YggdrasilGateway'
 
 include(':components:gateway-api')
 include(':components:gateway-core')
+include(':components:gateway-frontend')
 include(':components:gateway-bootstrap')
