@@ -3,5 +3,7 @@ plugins {
 }
 
 dependencies {
+    runtimeOnly 'com.mysql:mysql-connector-j:8.4.0'
+
     api project(':components:gateway-api')
 }

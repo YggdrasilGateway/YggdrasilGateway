@@ -9,6 +9,7 @@ import java.io.File
 import java.io.InputStream
 import java.lang.management.ManagementFactory
 import java.util.zip.ZipFile
+import kotlin.system.exitProcess
 
 public suspend fun main(args: Array<String>) {
     val log = LoggerFactory.getLogger("Bootstrap")
@@ -71,6 +72,11 @@ public suspend fun main(args: Array<String>) {
         }.onFailure { log.warn("Exception when walking {}", filePath, it) }
     }
 
-    EventBus.GLOBAL_BUS.fireEvent(YggdrasilGatewayBootstrapEvent, nofail = true)
+    runCatching {
+        EventBus.GLOBAL_BUS.fireEvent(YggdrasilGatewayBootstrapEvent, nofail = false)
+    }.onFailure { err ->
+        log.error("Failed to bootstrap", err)
+        exitProcess(-5)
+    }
 }
 
