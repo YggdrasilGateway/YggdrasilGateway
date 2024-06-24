@@ -60,7 +60,7 @@ public open class SimpleProperties(
     }
 
 
-    public fun reload() {
+    public open fun reload() {
         file.parentFile?.mkdirs()
 
         val currentProperties = Properties()

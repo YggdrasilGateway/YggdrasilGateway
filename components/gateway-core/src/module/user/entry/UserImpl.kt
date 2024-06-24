@@ -1,14 +1,14 @@
 package com.kasukusakura.yggdrasilgateway.core.module.user.entry
 
-import com.kasukusakura.yggdrasilgateway.core.module.user.principal.GatewayPrincipal
+import com.kasukusakura.yggdrasilgateway.core.module.user.principal.UserPrincipal
 
 internal class UserImpl(
-    val userid: Int,
-    var username: String,
+    override val userid: Int,
+    override var username: String,
     var email: String?,
     var active: Boolean,
     var roles: Set<String>,
-) : GatewayPrincipal {
+) : UserPrincipal {
     override val displayName: String
         get() = username
 

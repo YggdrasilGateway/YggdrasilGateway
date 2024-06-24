@@ -22,7 +22,7 @@ internal object UserModule {
 
             runBlocking { ApiRouteInitializeEvent(apiRoute, false).eventFire() }
 
-            apiRoute.authenticate("basic") {
+            apiRoute.authenticate("basic", "jwt") {
                 runBlocking { ApiRouteInitializeEvent(this@authenticate, true).eventFire() }
             }
 

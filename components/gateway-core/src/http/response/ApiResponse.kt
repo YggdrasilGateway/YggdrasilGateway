@@ -14,7 +14,13 @@ public sealed class ApiResponse
 public open class ApiFailedResponse(
     public open val message: String,
     public val errorCode: Int,
-) : ApiResponse()
+) : ApiResponse() {
+    public fun doThrow(): Nothing = throw AsException()
+
+    private inner class AsException : ApiRejectedException(message, errorCode) {
+        override fun toResponse(): ApiFailedResponse = this@ApiFailedResponse
+    }
+}
 
 public open class ApiSuccessResponse : ApiResponse()
 
@@ -27,4 +33,11 @@ public inline fun ApiSuccessDataResponse(block: JsonObjectBuilder.() -> Unit): A
         callsInPlace(block, InvocationKind.EXACTLY_ONCE)
     }
     return ApiSuccessDataResponse(buildJsonObject(block))
+}
+
+public open class ApiRejectedException(
+    public override val message: String,
+    public open val errorCode: Int = 403,
+) : RuntimeException(null, null, false, false) {
+    public open fun toResponse(): ApiFailedResponse = ApiFailedResponse(message, errorCode)
 }
