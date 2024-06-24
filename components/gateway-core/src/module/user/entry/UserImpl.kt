@@ -1,5 +1,7 @@
 package com.kasukusakura.yggdrasilgateway.core.module.user.entry
 
+import com.google.gson.JsonObject
+import com.kasukusakura.yggdrasilgateway.api.util.buildJsonArray
 import com.kasukusakura.yggdrasilgateway.core.module.user.principal.UserPrincipal
 
 internal class UserImpl(
@@ -18,5 +20,15 @@ internal class UserImpl(
             if (roleImpl.hasPermission(permission)) return true
         }
         return false
+    }
+
+    override fun reportInformation(output: JsonObject) {
+        output.addProperty("user.userid", userid)
+        output.addProperty("user.username", username)
+        output.addProperty("user.email", email)
+        output.addProperty("user.active", active)
+        output.add("user.roles", buildJsonArray {
+            roles.forEach { role -> add(role) }
+        })
     }
 }

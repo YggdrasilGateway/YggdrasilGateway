@@ -14,7 +14,7 @@ internal annotation class GsonBuilderDsl
 
 @JvmInline
 public value class JsonObjectBuilder public constructor(
-    private val delegate: JsonObject
+    @GsonBuilderDsl public val delegate: JsonObject
 ) {
     // @formatter:off
 
@@ -68,7 +68,7 @@ public value class JsonObjectBuilder public constructor(
 
 @JvmInline
 public value class JsonArrayBuilder public constructor(
-    private val delegate: JsonArray
+    @GsonBuilderDsl public val delegate: JsonArray
 ) {
     public operator fun String?.unaryPlus(): Unit = delegate.add(this)
     public operator fun Number?.unaryPlus(): Unit = delegate.add(this)

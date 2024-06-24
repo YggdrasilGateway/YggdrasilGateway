@@ -7,6 +7,7 @@ import com.kasukusakura.yggdrasilgateway.api.eventbus.EventSubscriber
 import com.kasukusakura.yggdrasilgateway.api.events.system.YggdrasilHttpServerInitializeEvent
 import com.kasukusakura.yggdrasilgateway.api.properties.SimpleProperties
 import com.kasukusakura.yggdrasilgateway.core.module.user.entry.UserEntryManager
+import com.kasukusakura.yggdrasilgateway.core.module.user.principal.JWTPrincipal
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import java.io.File
@@ -18,6 +19,7 @@ internal object JwtAuthorizationConfig : SimpleProperties("jwt", file = File("da
     var issuer = "yggdrasil-gateway-" + UUID.randomUUID()
     var relam = issuer
 
+    @field:Transient
     lateinit var algorithm: Algorithm
         private set
 
@@ -47,6 +49,8 @@ internal object JwtAuthorization {
                         val sub = cred.payload.subject?.toIntOrNull() ?: return@validate null
 
                         return@validate UserEntryManager.users[sub]
+                            ?.takeIf { it.active }
+                            ?.let { JWTPrincipal.User(cred, it) }
                     }
 
                     return@validate null

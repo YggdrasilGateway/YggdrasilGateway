@@ -1,5 +1,6 @@
 package com.kasukusakura.yggdrasilgateway.core.module.user.principal
 
+import com.google.gson.JsonObject
 import com.kasukusakura.yggdrasilgateway.core.module.user.entry.UserEntryManager
 
 public class UseridPrincipal(override val userid: Int) : UserPrincipal {
@@ -11,5 +12,9 @@ public class UseridPrincipal(override val userid: Int) : UserPrincipal {
 
     override fun hasPermission(permission: String): Boolean {
         return realUser?.hasPermission(permission) ?: false
+    }
+
+    override fun reportInformation(output: JsonObject) {
+        realUser?.reportInformation(output)
     }
 }

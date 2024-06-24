@@ -27,6 +27,7 @@ private object UserHttpApi {
                 ApiSuccessDataResponse {
                     val principal = call.principal<GatewayPrincipal>()!!
                     "displayName" value principal.displayName
+                    principal.reportInformation(this.delegate)
                 }
             )
         }
