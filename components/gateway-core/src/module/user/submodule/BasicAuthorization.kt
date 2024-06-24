@@ -21,7 +21,7 @@ private object BasicAuthorization {
                     withContext(Dispatchers.IO) verify@{
                         val saltQuery = mysqlDatabase.from(UsersTable)
                             .select(UsersTable.passwordSalt, UsersTable.password, UsersTable.userid)
-                            .where { UsersTable.username eq cred.name and UsersTable.active eq true }
+                            .where { (UsersTable.username eq cred.name) and (UsersTable.active eq true) }
                             .rowSet
                         if (!saltQuery.next()) {
                             return@verify null
