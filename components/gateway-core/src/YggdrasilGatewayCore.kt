@@ -9,6 +9,7 @@ import com.kasukusakura.yggdrasilgateway.api.util.childrenContext
 import com.kasukusakura.yggdrasilgateway.api.util.eventFire
 import com.kasukusakura.yggdrasilgateway.core.config.HttpServerProperties
 import com.kasukusakura.yggdrasilgateway.core.database.DatabaseConnectionManager
+import com.kasukusakura.yggdrasilgateway.core.event.DatabaseInitializationEvent
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import kotlinx.coroutines.*
@@ -60,7 +61,7 @@ internal object YggdrasilGatewayCore {
         log.info("Initializing Database Connections")
         DatabaseConnectionManager.mysqlDatabase
         DatabaseConnectionManager.mysqlConnectionSource.connection.close()
-
+        runBlocking { DatabaseInitializationEvent.eventFire() }
 
         log.info("Initializing Http Server...")
         embeddedServer(

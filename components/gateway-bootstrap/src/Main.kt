@@ -2,6 +2,7 @@ package com.kasukusakura.yggdrasilgateway.bootstrap
 
 import com.kasukusakura.yggdrasilgateway.api.eventbus.EventBus
 import com.kasukusakura.yggdrasilgateway.api.events.system.YggdrasilGatewayBootstrapEvent
+import com.kasukusakura.yggdrasilgateway.api.util.loadInstance
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.tree.ClassNode
 import org.slf4j.LoggerFactory
@@ -22,8 +23,7 @@ public suspend fun main(args: Array<String>) {
 
             fun loadClass(name: String) = Class.forName(name.replace('/', '.'))
             fun loadInstance(name: String): Any {
-                val klass = loadClass(name).kotlin
-                return klass.objectInstance ?: klass.java.newInstance()
+                return loadClass(name).loadInstance()
             }
 
             fun readingClass(name: String, block: () -> InputStream) {
