@@ -2,6 +2,7 @@ package com.kasukusakura.yggdrasilgateway.core.module.user.submodule
 
 import com.auth0.jwt.JWT
 import com.kasukusakura.yggdrasilgateway.api.eventbus.EventSubscriber
+import com.kasukusakura.yggdrasilgateway.api.util.decodeHex
 import com.kasukusakura.yggdrasilgateway.core.http.event.ApiRouteInitializeEvent
 import com.kasukusakura.yggdrasilgateway.core.http.response.ApiRejectedException
 import com.kasukusakura.yggdrasilgateway.core.http.response.ApiSuccessDataResponse
@@ -18,6 +19,36 @@ import java.util.concurrent.TimeUnit
 
 @EventSubscriber
 private object UserHttpApi {
+    @EventSubscriber.Handler
+    fun ApiRouteInitializeEvent.handleLogin() = route.apply {
+        if (authorization) return@apply
+
+        post("/user/login") {
+            @Serializable
+            data class Req(
+                val username: String,
+                val password: String,
+            )
+            val req = call.receive<Req>()
+            val pwd = req.password.decodeHex()
+
+            val authed = BasicAuthorization.auth(req.username, pwd, true) ?: throw ApiRejectedException("Invalid username/password")
+
+            val now = System.currentTimeMillis()
+            val jwt = JWT.create()
+                .withIssuer(JwtAuthorizationConfig.issuer)
+                .withAudience("authorization/user")
+                .withSubject(authed.userid.toString())
+                .withNotBefore(Instant.ofEpochMilli(now))
+                .withExpiresAt(Instant.ofEpochMilli(now + 1000L * 60))
+                .sign(JwtAuthorizationConfig.algorithm)
+
+            call.respond(ApiSuccessDataResponse {
+                "token" value jwt
+            })
+        }
+    }
+
     @EventSubscriber.Handler
     fun ApiRouteInitializeEvent.handle() = route.apply {
         if (!authorization) return@apply

@@ -12,29 +12,33 @@ import kotlinx.coroutines.withContext
 import org.ktorm.dsl.*
 
 @EventSubscriber
-private object BasicAuthorization {
+internal object BasicAuthorization {
+    fun auth(username: String, password: ByteArray, hashed: Boolean): UseridPrincipal? {
+        val saltQuery = mysqlDatabase.from(UsersTable)
+            .select(UsersTable.passwordSalt, UsersTable.password, UsersTable.userid)
+            .where { (UsersTable.username eq username) and (UsersTable.active eq true) }
+            .rowSet
+        if (!saltQuery.next()) {
+            return null
+        }
+        val salt = saltQuery[UsersTable.passwordSalt] ?: return null
+
+        if (!PasswordHasher.hashPassword(password, salt, passwordHashed = hashed)
+                .contentEquals(saltQuery[UsersTable.password])
+        ) {
+            return null
+        }
+
+        return UseridPrincipal(saltQuery[UsersTable.userid] ?: error("Failed to get userid"))
+    }
+
     @EventSubscriber.Handler(priority = EventPriority.HIGHER)
     fun YggdrasilHttpServerInitializeEvent.ModuleInitializeEvent.handle() {
         app.authentication {
             basic("basic") {
                 validate { cred ->
-                    withContext(Dispatchers.IO) verify@{
-                        val saltQuery = mysqlDatabase.from(UsersTable)
-                            .select(UsersTable.passwordSalt, UsersTable.password, UsersTable.userid)
-                            .where { (UsersTable.username eq cred.name) and (UsersTable.active eq true) }
-                            .rowSet
-                        if (!saltQuery.next()) {
-                            return@verify null
-                        }
-                        val salt = saltQuery[UsersTable.passwordSalt] ?: return@verify null
-
-                        if (!PasswordHasher.hashPassword(cred.password.toByteArray(), salt)
-                                .contentEquals(saltQuery[UsersTable.password])
-                        ) {
-                            return@verify null
-                        }
-
-                        UseridPrincipal(saltQuery[UsersTable.userid] ?: error("Failed to get userid"))
+                    withContext(Dispatchers.IO) {
+                        auth(cred.name, cred.password.toByteArray(), false)
                     }
                 }
             }
