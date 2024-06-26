@@ -3,9 +3,12 @@ package com.kasukusakura.yggdrasilgateway.core.module.user.submodule
 import com.auth0.jwt.JWT
 import com.kasukusakura.yggdrasilgateway.api.eventbus.EventSubscriber
 import com.kasukusakura.yggdrasilgateway.api.util.decodeHex
+import com.kasukusakura.yggdrasilgateway.core.database.DatabaseConnectionManager.mysqlDatabase
 import com.kasukusakura.yggdrasilgateway.core.http.event.ApiRouteInitializeEvent
 import com.kasukusakura.yggdrasilgateway.core.http.response.ApiRejectedException
 import com.kasukusakura.yggdrasilgateway.core.http.response.ApiSuccessDataResponse
+import com.kasukusakura.yggdrasilgateway.core.module.user.db.UsersTable
+import com.kasukusakura.yggdrasilgateway.core.module.user.entry.UserEntryManager
 import com.kasukusakura.yggdrasilgateway.core.module.user.principal.GatewayPrincipal
 import com.kasukusakura.yggdrasilgateway.core.module.user.principal.UserPrincipal
 import io.ktor.server.application.*
@@ -13,8 +16,12 @@ import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import org.ktorm.dsl.*
 import java.time.Instant
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 @EventSubscriber
@@ -29,10 +36,12 @@ private object UserHttpApi {
                 val username: String,
                 val password: String,
             )
+
             val req = call.receive<Req>()
             val pwd = req.password.decodeHex()
 
-            val authed = BasicAuthorization.auth(req.username, pwd, true) ?: throw ApiRejectedException("Invalid username/password")
+            val authed = BasicAuthorization.auth(req.username, pwd, true)
+                ?: throw ApiRejectedException("Invalid username/password")
 
             val now = System.currentTimeMillis()
             val jwt = JWT.create()
@@ -99,6 +108,55 @@ private object UserHttpApi {
                 "validToInstant" value Instant.ofEpochMilli(now + req.time).toString()
                 "validToTimestamp" value (now + req.time)
             })
+        }
+        post("/user/reset-password") {
+            @Serializable
+            data class Req(
+                val old: String,
+                val new: String,
+            )
+
+            val principal = call.principal<GatewayPrincipal>()!!
+            if (principal !is UserPrincipal) {
+                throw ApiRejectedException("Requiring a user login principal")
+            }
+
+            val req = call.receive<Req>()
+            withContext(Dispatchers.IO) {
+                mysqlDatabase.useTransaction {
+                    val result = mysqlDatabase.from(UsersTable)
+                        .select(UsersTable.password, UsersTable.passwordSalt)
+                        .where { (UsersTable.userid eq principal.userid) }
+                        .rowSet
+
+                    if (!result.next()) {
+                        throw ApiRejectedException("Account not available in database")
+                    }
+                    val salt = result[UsersTable.passwordSalt]
+                        ?: throw ApiRejectedException("This account is a service account");
+
+                    if (!PasswordHasher.hashPassword(req.old.decodeHex(), salt, passwordHashed = true)
+                            .contentEquals(result[UsersTable.password])
+                    ) {
+                        throw ApiRejectedException("Old password incorrect")
+                    }
+
+                    mysqlDatabase.update(UsersTable) {
+                        where { (UsersTable.userid eq principal.userid) }
+
+                        val newSalt = UUID.randomUUID().toString().toByteArray()
+                        set(UsersTable.passwordSalt, newSalt)
+                        set(UsersTable.reactiveTime, System.currentTimeMillis() + 1000L)
+                        set(
+                            UsersTable.password,
+                            PasswordHasher.hashPassword(req.new.decodeHex(), newSalt, passwordHashed = true)
+                        )
+                    }
+                }
+                UserEntryManager.users.invalidate(principal.userid)
+            }
+
+            call.respond(ApiSuccessDataResponse())
         }
 
     }

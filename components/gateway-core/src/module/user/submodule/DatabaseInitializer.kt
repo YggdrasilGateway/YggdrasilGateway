@@ -21,6 +21,8 @@ create table if not exists users
     password     BLOB              null,
     passwordSalt BLOB              null,
     active       bool default TRUE not null,
+    reactiveTime INT8 default 0 not null,
+    creationTime INT8 default UNIX_TIMESTAMP() not null,
 
     constraint users_pk     primary key (userid),
     constraint user_name_pk unique  key (username)

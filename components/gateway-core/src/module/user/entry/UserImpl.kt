@@ -10,6 +10,7 @@ internal class UserImpl(
     var email: String?,
     var active: Boolean,
     var roles: Set<String>,
+    var reactiveTime: Long,
 ) : UserPrincipal {
     override val displayName: String
         get() = username

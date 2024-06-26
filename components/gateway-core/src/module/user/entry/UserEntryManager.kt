@@ -60,7 +60,7 @@ internal object UserEntryManager {
     private fun loadUserFromDb(uid: Int): UserImpl? {
         mysqlDatabase.useTransaction {
             val userLookup = mysqlDatabase.from(UsersTable)
-                .select(UsersTable.email, UsersTable.username, UsersTable.active)
+                .select(UsersTable.email, UsersTable.username, UsersTable.active, UsersTable.reactiveTime)
                 .where { UsersTable.userid eq uid }
                 .rowSet
 
@@ -72,6 +72,7 @@ internal object UserEntryManager {
                 active = userLookup[UsersTable.active] ?: false,
                 email = userLookup[UsersTable.email],
                 roles = roles,
+                reactiveTime = userLookup[UsersTable.reactiveTime]!!,
             )
 
             mysqlDatabase.from(UserRoleTable)

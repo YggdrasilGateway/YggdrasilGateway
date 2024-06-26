@@ -9,4 +9,6 @@ internal object UsersTable : Table<Nothing>("users") {
     val password = bytes("password")
     val passwordSalt = bytes("passwordSalt")
     val active = boolean("active")
+    val reactiveTime = long("reactiveTime")
+    val creationTime = long("creationTime")
 }

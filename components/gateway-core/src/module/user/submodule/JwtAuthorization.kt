@@ -45,11 +45,13 @@ internal object JwtAuthorization {
                 realm = JwtAuthorizationConfig.relam
                 authSchemes("jwt", "Bearer", "token")
                 validate { cred ->
+                    val notBeforeAsInstant = cred.payload.notBeforeAsInstant ?: return@validate null
+
                     if (cred.audience.any { it == "authorization/user" }) {
                         val sub = cred.payload.subject?.toIntOrNull() ?: return@validate null
 
                         return@validate UserEntryManager.users[sub]
-                            ?.takeIf { it.active }
+                            ?.takeIf { it.active && notBeforeAsInstant.toEpochMilli() > it.reactiveTime }
                             ?.let { JWTPrincipal.User(cred, it) }
                     }
 
