@@ -133,12 +133,12 @@ private object UserHttpApi {
                         throw ApiRejectedException("Account not available in database")
                     }
                     val salt = result[UsersTable.passwordSalt]
-                        ?: throw ApiRejectedException("This account is a service account");
+                        ?: throw ApiRejectedException("This account is a service account")
 
                     if (!PasswordHasher.hashPassword(req.old.decodeHex(), salt, passwordHashed = true)
                             .contentEquals(result[UsersTable.password])
                     ) {
-                        throw ApiRejectedException("Old password incorrect")
+                        throw ApiRejectedException("reset-password.old-password-incorrect")
                     }
 
                     mysqlDatabase.update(UsersTable) {
