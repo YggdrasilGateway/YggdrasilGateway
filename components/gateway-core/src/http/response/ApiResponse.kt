@@ -3,6 +3,7 @@
 package com.kasukusakura.yggdrasilgateway.core.http.response
 
 import com.google.gson.JsonElement
+import com.kasukusakura.yggdrasilgateway.api.tracking.TrackingIgnoredException
 import com.kasukusakura.yggdrasilgateway.api.util.JsonObjectBuilder
 import com.kasukusakura.yggdrasilgateway.api.util.buildJsonObject
 import kotlin.contracts.ExperimentalContracts
@@ -38,6 +39,6 @@ public inline fun ApiSuccessDataResponse(block: JsonObjectBuilder.() -> Unit): A
 public open class ApiRejectedException(
     public override val message: String,
     public open val errorCode: Int = 403,
-) : RuntimeException(null, null, false, false) {
+) : RuntimeException(null, null, false, false), TrackingIgnoredException {
     public open fun toResponse(): ApiFailedResponse = ApiFailedResponse(message, errorCode)
 }

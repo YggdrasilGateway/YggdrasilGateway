@@ -68,6 +68,10 @@ public suspend fun <T> tracking(
     } catch (e: Error) {
         throw e
     } catch (e: Throwable) {
+        if (e is TrackingIgnoredException) throw e
+
         throw TrackingException(newStack, e)
     }
 }
+
+public interface TrackingIgnoredException
