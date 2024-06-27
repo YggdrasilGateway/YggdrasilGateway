@@ -102,6 +102,10 @@ public val ApiRouteInterceptors: RouteScopedPlugin<ApiRouteConfig> = createRoute
 //            if (call.response.sub)
 //        }
         transformBody { data ->
+            if (data is ApiRejectedException) data.toResponse() else data
+        }
+
+        transformBody { data ->
             when (data) {
                 is UnauthorizedResponse -> WriterContent(
                     contentType = jsonContentType,

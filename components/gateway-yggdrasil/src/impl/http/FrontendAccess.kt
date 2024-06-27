@@ -1,5 +1,6 @@
 package com.kasukusakura.yggdrasilgateway.yggdrasil.impl.http
 
+import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.kasukusakura.yggdrasilgateway.api.eventbus.EventSubscriber
 import com.kasukusakura.yggdrasilgateway.api.util.buildJsonArray
@@ -13,16 +14,26 @@ import com.kasukusakura.yggdrasilgateway.core.http.response.ApiSuccessDataRespon
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.PlayerInfoTable
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.YggdrasilServicesTable
 import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.evt.UpstreamPlayerTransformEvent
+import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.sys.OperationFlags
+import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.sys.OperationOptionsSaver
 import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.sys.YggdrasilServicesHolder
+import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.sys.YggdrasilServicesHolder.sharedHttpClient
 import com.kasukusakura.yggdrasilgateway.yggdrasil.remote.YggdrasilServiceProviders
 import com.kasukusakura.yggdrasilgateway.yggdrasil.util.parseUuid
 import com.kasukusakura.yggdrasilgateway.yggdrasil.util.toStringUnsigned
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.utils.io.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.entity.*
@@ -99,48 +110,49 @@ internal object FrontendAccess {
         /// Players
 
         get("/players") {
-            val playerInfoTable = mysqlDatabase.sequenceOf(PlayerInfoTable)
-            val indexer = call.request.queryParameters["index"]?.toIntOrNull() ?: 0
-            val search = call.request.queryParameters["search"]
+            withContext(Dispatchers.IO) {
+                val playerInfoTable = mysqlDatabase.sequenceOf(PlayerInfoTable)
+                val indexer = call.request.queryParameters["index"]?.toIntOrNull() ?: 0
+                val search = call.request.queryParameters["search"]
 
-            val total: Int
-            val sqlTerm = if (search == null) {
-                val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
+                val total: Int
+                val sqlTerm = if (search == null) {
+                    val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
 
 
-                playerInfoTable
-                    .sortedBy { it.indexer }
-                    .also { total = it.count() }
-                    .drop(indexer)
-                    .take(pageSize)
-            } else {
-                val uuid = kotlin.runCatching { search.parseUuid().toStringUnsigned() }.getOrElse { search }
+                    playerInfoTable
+                        .sortedBy { it.indexer }
+                        .also { total = it.count() }
+                        .drop(indexer)
+                        .take(pageSize)
+                } else {
+                    val uuid = kotlin.runCatching { search.parseUuid().toStringUnsigned() }.getOrElse { search }
 
-                playerInfoTable.filter {
-                    (it.upstreamNameIgnoreCase eq search)
-                        .or(it.downstreamNameIgnoreCase eq search)
-                        .or(it.upstreamUuid eq uuid)
-                        .or(it.downstreamUuid eq uuid)
-                }.also { total = it.count() }
-            }
+                    playerInfoTable.filter {
+                        (it.upstreamNameIgnoreCase eq search)
+                            .or(it.downstreamNameIgnoreCase eq search)
+                            .or(it.upstreamUuid eq uuid)
+                            .or(it.downstreamUuid eq uuid)
+                    }.also { total = it.count() }
+                }
 
-            call.respond(ApiSuccessDataResponse {
-                "total"(total)
-                "values" arr {
-                    sqlTerm.forEach { entity ->
-                        +buildJsonObject {
-                            "entryId"(entity.entryId)
-                            "upstreamName"(entity.upstreamName)
-                            "downstreamName"(entity.downstreamName)
-                            "upstreamUuid"(entity.upstreamUuid)
-                            "downstreamUuid"(entity.downstreamUuid)
-                            "declared"(entity.declaredYggdrasilTree)
-                            "alwaysPermit"(entity.alwaysPermit)
+                call.respond(ApiSuccessDataResponse {
+                    "total"(total)
+                    "values" arr {
+                        sqlTerm.forEach { entity ->
+                            +buildJsonObject {
+                                "entryId"(entity.entryId)
+                                "upstreamName"(entity.upstreamName)
+                                "downstreamName"(entity.downstreamName)
+                                "upstreamUuid"(entity.upstreamUuid)
+                                "downstreamUuid"(entity.downstreamUuid)
+                                "declared"(entity.declaredYggdrasilTree)
+                                "alwaysPermit"(entity.alwaysPermit)
+                            }
                         }
                     }
-                }
-            })
-
+                })
+            }
         }
         patch("/players") {
             val conf = call.receive<JsonObject>()
@@ -158,12 +170,14 @@ internal object FrontendAccess {
 
             val alwaysPermit = conf.getAsJsonPrimitive("alwaysPermit")?.asBoolean
 
-            mysqlDatabase.update(PlayerInfoTable) {
-                where { it.entryId eq entryId }
+            withContext(Dispatchers.IO) {
+                mysqlDatabase.update(PlayerInfoTable) {
+                    where { it.entryId eq entryId }
 
-                downstreamUuid?.let { set(PlayerInfoTable.downstreamUuid, it.toStringUnsigned()) }
-                downstreamName?.let { set(PlayerInfoTable.downstreamName, it) }
-                alwaysPermit?.let { set(PlayerInfoTable.alwaysPermit, it) }
+                    downstreamUuid?.let { set(PlayerInfoTable.downstreamUuid, it.toStringUnsigned()) }
+                    downstreamName?.let { set(PlayerInfoTable.downstreamName, it) }
+                    alwaysPermit?.let { set(PlayerInfoTable.alwaysPermit, it) }
+                }
             }
 
             call.respond(ApiSuccessDataResponse())
@@ -178,7 +192,7 @@ internal object FrontendAccess {
 
             supervisorScope {
                 req.data.forEach { (service, value) ->
-                    launch {
+                    launch(Dispatchers.IO) {
                         val ygService = YggdrasilServicesHolder.services[service] ?: return@launch
                         ygService.service.batchQuery(value).forEach { profile ->
                             UpstreamPlayerTransformEvent(
@@ -194,8 +208,50 @@ internal object FrontendAccess {
 
         delete("/players/{id}") {
             val id = call.parameters["id"] ?: throw ApiRejectedException("Missing entry id")
-            mysqlDatabase.delete(PlayerInfoTable) { it.entryId eq id }
+            withContext(Dispatchers.IO) { mysqlDatabase.delete(PlayerInfoTable) { it.entryId eq id } }
             call.respond(ApiSuccessDataResponse())
+        }
+
+
+        /// Operation Flags
+        get("/system/flags") {
+            call.respond(
+                ApiSuccessDataResponse(
+                    Gson().toJsonTree(YggdrasilServicesHolder.flags)
+                )
+            )
+        }
+
+        patch("/system/flags") {
+            val req = call.receive<JsonObject>()
+
+            val result = Gson().fromJson(req, OperationFlags::class.java)
+                ?: throw ApiRejectedException("Failed to parse operations flags from $req")
+            YggdrasilServicesHolder.flags = result
+            withContext(Dispatchers.IO) { OperationOptionsSaver.saveOptions() }
+
+            call.respond(ApiSuccessDataResponse())
+        }
+
+        post("/system/fetch-content") {
+            val httpCall = sharedHttpClient.get(call.receive<JsonObject>().getAsJsonPrimitive("data").asString)
+            if (httpCall.status.value != 200) {
+                call.respond(ApiRejectedException(httpCall.status.toString()))
+                httpCall.bodyAsChannel().cancel()
+                return@post
+            }
+            if (httpCall.contentType()?.match(ContentType.Application.Json) != true) {
+                call.respond(ApiRejectedException("yggdrasil.settings.delivered-public-key.sync.incorrect-content-type"))
+                httpCall.bodyAsChannel().cancel()
+                return@post
+            }
+
+            call.respond(object : OutgoingContent.WriteChannelContent() {
+                override suspend fun writeTo(channel: ByteWriteChannel) {
+                    httpCall.bodyAsChannel().copyAndClose(channel)
+                }
+            })
+
         }
     }
 }
