@@ -22,14 +22,12 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.util.*
 import kotlinx.coroutines.*
 import org.ktorm.dsl.eq
 import org.ktorm.entity.filter
 import org.ktorm.entity.firstOrNull
 import org.ktorm.entity.sequenceOf
 import org.slf4j.LoggerFactory
-import java.security.KeyPairGenerator
 import java.util.*
 
 
@@ -69,14 +67,7 @@ internal object ApiServer {
             call.respondText {
                 buildJsonObject {
                     "skinDomains" arr {}
-                    val keypair = KeyPairGenerator.getInstance("RSA").apply {
-                        initialize(2048)
-                    }.generateKeyPair()
-                    "signaturePublicKey"(buildString {
-                        append("-----BEGIN PUBLIC KEY-----")
-                        append(keypair.public.encoded.encodeBase64())
-                        append("-----END PUBLIC KEY-----")
-                    })
+                    "signaturePublicKey"(YggdrasilServicesHolder.flags.deliveredPublicKey)
                 }.toString()
             }
         }
