@@ -38,7 +38,8 @@ internal object YggdrasilServicesHolder {
     var flags = OperationFlags()
 
     @EventSubscriber.Handler
-    fun DatabaseInitializationEvent.handle() {
+    fun reloadServices(event: DatabaseInitializationEvent) {
+        val newServices = mutableMapOf<String, LoadedYggdrasilService>()
         mysqlDatabase.from(YggdrasilServicesTable)
             .select(
                 YggdrasilServicesTable.id,
@@ -53,8 +54,12 @@ internal object YggdrasilServicesHolder {
                     comment = result[YggdrasilServicesTable.comment],
                     active = result[YggdrasilServicesTable.active]!!,
                 )
-                services[service.id] = service
+                newServices[service.id] = service
             }
+
+        services.putAll(newServices)
+        services.keys.removeIf { !newServices.containsKey(it) }
+
         OperationOptionsSaver.reloadOptions()
         OperationOptionsSaver.saveOptions()
     }
