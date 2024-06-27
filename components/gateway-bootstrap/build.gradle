@@ -50,7 +50,7 @@ tasks.register('buildDockerImage').configure {
 
         try (def ps = new PrintWriter(new File(outputPath, "Dockerfile"))) {
             ps.println("FROM azul/zulu-openjdk:21-latest")
-            ps.println("COPY " + basepath + " /app")
+            ps.println("COPY " + outputPath.relativePath(basepath) + " /app")
             ps.println("WORKDIR /app/run")
             ps.println("ENTRYPOINT bash /app/bin/start.sh")
         }
