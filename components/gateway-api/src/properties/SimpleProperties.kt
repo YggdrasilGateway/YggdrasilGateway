@@ -59,6 +59,12 @@ public open class SimpleProperties(
         return !field.isSynthetic && !Modifier.isTransient(field.modifiers)
     }
 
+    protected open fun toEnvironmentName(propertyName: String, field: Field): String {
+        return propertyName
+            .replace('.', '_')
+            .replace('-', '_')
+            .uppercase(Locale.getDefault())
+    }
 
     public open fun reload() {
         file.parentFile?.mkdirs()
@@ -71,6 +77,10 @@ public open class SimpleProperties(
         val loadedProperties = Properties()
         file.takeIf { it.exists() }?.let { f ->
             f.bufferedReader().use { loadedProperties.load(it) }
+        }
+        properties.forEach { (property, field) ->
+            val environmentName = toEnvironmentName(property, field)
+            System.getenv(environmentName)?.let { loadedProperties.setProperty(property, environmentName) }
         }
 
         var saveRequired = false
