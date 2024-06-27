@@ -2,6 +2,7 @@ package com.kasukusakura.yggdrasilgateway.yggdrasil.db
 
 import org.ktorm.schema.Table
 import org.ktorm.schema.boolean
+import org.ktorm.schema.long
 import org.ktorm.schema.varchar
 
 internal object PlayerInfoTable : Table<PlayerInfo>("yggdrasil_player_info") {
@@ -17,4 +18,5 @@ internal object PlayerInfoTable : Table<PlayerInfo>("yggdrasil_player_info") {
     val downstreamUuid = varchar("downstream_uuid").bindTo { it.downstreamUuid }
 
     val alwaysPermit = boolean("always_permit").bindTo { it.alwaysPermit }
+    val indexer = long("indexer").bindTo { it.indexer }
 }

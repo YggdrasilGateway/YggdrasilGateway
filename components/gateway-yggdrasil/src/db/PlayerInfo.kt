@@ -15,6 +15,7 @@ internal interface PlayerInfo : Entity<PlayerInfo> {
     var downstreamUuid: String
 
     var alwaysPermit: Boolean
+    val indexer: Long
 
     companion object : Entity.Factory<PlayerInfo>()
 }

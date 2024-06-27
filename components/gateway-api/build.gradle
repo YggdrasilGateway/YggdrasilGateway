@@ -13,5 +13,6 @@ dependencies {
     api 'com.google.guava:guava:33.2.1-jre'
     api 'com.google.code.gson:gson:2.11.0'
     api 'org.ktorm:ktorm-core:4.0.0'
+    api 'org.ktorm:ktorm-support-mysql:4.0.0'
     api 'com.zaxxer:HikariCP:5.1.0'
 }
