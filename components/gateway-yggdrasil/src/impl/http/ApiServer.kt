@@ -64,10 +64,10 @@ internal object ApiServer {
 
     private fun Route.mount() {
         get("/") {
-            call.respondText {
+            call.respondText(contentType = ContentType.Application.Json.withCharset(Charsets.UTF_8)) {
                 buildJsonObject {
                     "skinDomains" arr {}
-                    "signaturePublicKey"(YggdrasilServicesHolder.flags.deliveredPublicKey)
+                    "signaturePublickey"(YggdrasilServicesHolder.flags.deliveredPublicKey)
                 }.toString()
             }
         }
@@ -183,7 +183,7 @@ internal object ApiServer {
                     val finalResult = event.result
 
                     call.respondText(
-                        contentType = ContentType.Application.Json,
+                        contentType = ContentType.Application.Json.withCharset(Charsets.UTF_8),
                     ) {
                         PlayerProfile(
                             id = finalResult.id,
@@ -210,7 +210,7 @@ internal object ApiServer {
 
                 if (YggdrasilServicesHolder.flags.enchantedErrorRejection) {
                     call.respondText(
-                        contentType = ContentType.Application.Json,
+                        contentType = ContentType.Application.Json.withCharset(Charsets.UTF_8),
                     ) {
                         PlayerProfile(
                             id = REJECTION_UUID,
