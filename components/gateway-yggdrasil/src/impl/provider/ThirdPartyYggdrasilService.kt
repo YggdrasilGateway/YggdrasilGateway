@@ -3,6 +3,7 @@ package com.kasukusakura.yggdrasilgateway.yggdrasil.impl.provider
 import com.google.gson.JsonParser
 import com.kasukusakura.yggdrasilgateway.api.eventbus.EventSubscriber
 import com.kasukusakura.yggdrasilgateway.yggdrasil.data.PlayerProfile
+import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.provider.MojangYggdrasilProvider.toProfile
 import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.sys.YggdrasilServicesHolder.sharedHttpClient
 import com.kasukusakura.yggdrasilgateway.yggdrasil.remote.YggdrasilService
 import com.kasukusakura.yggdrasilgateway.yggdrasil.remote.YggdrasilServiceProvider
@@ -15,44 +16,43 @@ import io.ktor.utils.io.*
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import java.net.URI
 
-@EventSubscriber
-internal object MojangYggdrasilProvider : YggdrasilServiceProvider, YggdrasilService {
-    init {
-        YggdrasilServiceProviders.register(this)
+internal class ThirdPartyYggdrasilService(
+    val basePath: URI,
+) : YggdrasilService {
+    @EventSubscriber
+    private object Provider : YggdrasilServiceProvider {
+        init {
+            YggdrasilServiceProviders.register(this)
+        }
+
+        override fun apply(basePath: String): YggdrasilService? {
+            @Suppress("HttpUrlsUsage")
+            if (basePath.startsWith("http://") || basePath.startsWith("https://")) {
+                return ThirdPartyYggdrasilService(URI.create(basePath))
+            }
+            return null
+        }
+
     }
 
-    override val priority: Int get() = 0
-
-    override fun apply(basePath: String): YggdrasilService? {
-        if (basePath != "mojang") return null
-
-        return this
-    }
 
     override suspend fun hasJoined(params: Parameters): PlayerProfile? {
-        return sharedHttpClient.get("https://sessionserver.mojang.com/session/minecraft/hasJoined") {
+        return sharedHttpClient.get(basePath.resolve("sessionserver/session/minecraft/hasJoined").toString()) {
             url.parameters.appendAll(params)
         }.toProfile()
     }
 
-    suspend fun HttpResponse.toProfile(): PlayerProfile? {
-        if (status.value == HttpStatusCode.NoContent.value) return null
-        if (status.value == 404) return null
-
-        val content = bodyAsText()
-        if (status.value != 200) error(content)
-
-        return PlayerProfile.parse(content)
-    }
-
     override suspend fun queryProfile(uuid: String, unsigned: Boolean): PlayerProfile? {
-        return sharedHttpClient.get("https://sessionserver.mojang.com/session/minecraft/profile/$uuid?unsigned=$unsigned")
-            .toProfile()
+        return sharedHttpClient.get(
+            basePath.resolve("sessionserver/session/minecraft/profile/$uuid?unsigned=$unsigned")
+                .toString()
+        ).toProfile()
     }
 
     override suspend fun batchQuery(name: List<String>): List<PlayerProfile> {
-        val result = sharedHttpClient.post("https://api.minecraftservices.com/minecraft/profile/lookup/bulk/byname") {
+        val result = sharedHttpClient.post("api/profiles/minecraft") {
             val text = Json.encodeToString(ListSerializer(String.serializer()), name).encodeToByteArray()
 
             setBody(object : OutgoingContent.WriteChannelContent() {
