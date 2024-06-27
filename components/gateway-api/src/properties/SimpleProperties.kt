@@ -80,7 +80,16 @@ public open class SimpleProperties(
         }
         properties.forEach { (property, field) ->
             val environmentName = toEnvironmentName(property, field)
-            System.getenv(environmentName)?.let { loadedProperties.setProperty(property, environmentName) }
+            System.getenv(environmentName)?.let { loadedProperties.setProperty(property, it) }
+
+            System.getenv(environmentName + "_FILE")?.let { targetFile ->
+                kotlin.runCatching {
+                    loadedProperties.setProperty(property, File(targetFile).readText())
+                }.onFailure { err ->
+                    LoggerFactory.getLogger(javaClass)
+                        .warn("Exception when loading property {} using {}", property, targetFile, err)
+                }
+            }
         }
 
         var saveRequired = false
