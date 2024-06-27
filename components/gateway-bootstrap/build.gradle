@@ -1,5 +1,6 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm'
+    id 'application'
 }
 
 dependencies {
@@ -15,5 +16,43 @@ def bootstrapProject = project
 project(':components').subprojects {
     if (project != bootstrapProject) {
         bootstrapProject.dependencies.implementation(project)
+    }
+}
+
+distributions {
+    main.distributionBaseName.set("YggdrasilGateway")
+}
+
+tasks.register('buildDockerImage').configure {
+    dependsOn('distZip')
+    def outputPath = temporaryDir
+
+    doLast {
+        delete(outputPath)
+        def distZip = tasks.distZip
+        outputPath.mkdirs()
+
+        def unziped = new File(outputPath, 'unzip')
+        copy {
+            from(zipTree(distZip.outputs.files.singleFile))
+            into(unziped)
+        }
+
+        def basepath = unziped.listFiles()[0]
+        println(basepath)
+        delete(new File(basepath, 'bin'))
+
+        copy {
+            from(files('docker-files'))
+            into(new File(basepath, 'bin'))
+        }
+        new File(basepath, 'run').mkdirs()
+
+        try (def ps = new PrintWriter(new File(outputPath, "Dockerfile"))) {
+            ps.println("FROM azul/zulu-openjdk:21-latest")
+            ps.println("COPY " + basepath + " /app")
+            ps.println("WORKDIR /app/run")
+            ps.println("ENTRYPOINT bash /app/bin/start.sh")
+        }
     }
 }
