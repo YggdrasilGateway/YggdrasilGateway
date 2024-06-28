@@ -1,7 +1,7 @@
 name: Build
 on:
-  push: {}
-  pull_request: {}
+  push: { }
+  pull_request: { }
 
 
 jobs:
@@ -52,17 +52,31 @@ jobs:
           ls -lah build
 
       - name: Build docker image - prepare
-        run: gradle build buildDockerImage -Pgateway.frontend.resources.location=frontend/build
+        run: gradle build buildDockerImage copyReleases -Pgateway.frontend.resources.location=frontend/build
 
       - name: Build docker image - build
         run: sleep 5 && docker build -t yggdrasilgateway components/gateway-bootstrap/build/tmp/buildDockerImage
 
       - name: Build docker image - save
         run: docker save yggdrasilgateway | gzip > yggdrasilgateway.tar.gz
+
       - uses: actions/upload-artifact@v4
+        name: "Upload Docker Image"
         with:
           name: docker-image
           path: yggdrasilgateway.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        name: "Upload Distribution Zip"
+        with:
+          name: distribution-zip
+          path: components/gateway-bootstrap/build/tmp/copyReleases/zip
+
+      - uses: actions/upload-artifact@v4
+        name: "Upload Distribution Tar"
+        with:
+          name: distribution-tar
+          path: components/gateway-bootstrap/build/tmp/copyReleases/tar
 
   dependency-submission:
 

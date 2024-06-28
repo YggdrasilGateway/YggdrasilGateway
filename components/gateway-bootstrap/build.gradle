@@ -59,3 +59,19 @@ tasks.register('buildDockerImage').configure {
         }
     }
 }
+
+tasks.register('copyReleases').configure {
+    doLast {
+        def tmpDir = temporaryDir
+        delete(tmpDir)
+
+        copy {
+            from(tasks.distZip.outputs)
+            into(new File(tmpDir, 'zip'))
+        }
+        copy {
+            from(tasks.distTar.outputs)
+            into(new File(tmpDir, 'tar'))
+        }
+    }
+}
