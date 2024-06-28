@@ -29,8 +29,29 @@ jobs:
       - name: Build with Gradle 8.5
         run: gradle build
 
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+        with:
+          repository: 'https://github.com/YggdrasilGateway/GatewayFrontend.git'
+          path: 'frontend'
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          CI: false
+        run: |
+          yarn install
+          yarn run build
+
       - name: Build docker image - prepare
-        run: gradle buildDockerImage
+        run: gradle build buildDockerImage
+        env:
+          YG_FRONTEND_RESOURCES_LOCATION: frontend/build
 
       - name: Build docker image - build
         run: sleep 5 && docker build -t yggdrasilgateway components/gateway-bootstrap/build/tmp/buildDockerImage
