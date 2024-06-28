@@ -15,7 +15,7 @@ tasks.register('packFrontendResources', Jar.class).configure { Jar task ->
 
     if (value == null || value.isEmpty()) return
 
-    task.from(files(value)) { CopySpec spec ->
+    task.from(rootProject.files(value)) { CopySpec spec ->
         spec.into('gateway-static')
     }
 

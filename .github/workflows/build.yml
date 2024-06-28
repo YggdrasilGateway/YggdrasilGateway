@@ -39,6 +39,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
 
       - name: Build frontend
         working-directory: frontend
@@ -46,12 +48,11 @@ jobs:
           CI: false
         run: |
           yarn install
-          yarn run build
+          yarn run build:dev
+          ls -lah build
 
       - name: Build docker image - prepare
-        run: gradle build buildDockerImage
-        env:
-          YG_FRONTEND_RESOURCES_LOCATION: frontend/build
+        run: gradle build buildDockerImage -Pgateway.frontend.resources.location=frontend/build
 
       - name: Build docker image - build
         run: sleep 5 && docker build -t yggdrasilgateway components/gateway-bootstrap/build/tmp/buildDockerImage
