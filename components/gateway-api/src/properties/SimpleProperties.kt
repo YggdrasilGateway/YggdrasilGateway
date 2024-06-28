@@ -60,7 +60,7 @@ public open class SimpleProperties(
     }
 
     protected open fun toEnvironmentName(propertyName: String, field: Field): String {
-        return propertyName
+        return (this.name + "_" + propertyName)
             .replace('.', '_')
             .replace('-', '_')
             .uppercase(Locale.getDefault())
