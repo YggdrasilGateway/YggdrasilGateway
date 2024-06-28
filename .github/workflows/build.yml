@@ -32,7 +32,7 @@ jobs:
       - name: Checkout frontend
         uses: actions/checkout@v4
         with:
-          repository: 'https://github.com/YggdrasilGateway/GatewayFrontend.git'
+          repository: 'YggdrasilGateway/GatewayFrontend'
           path: 'frontend'
 
       - name: Use Node.js 20
