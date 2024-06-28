@@ -5,3 +5,27 @@ plugins {
 dependencies {
     api project(':components:gateway-api')
 }
+
+tasks.register('packFrontendResources', Jar.class).configure { Jar task ->
+    task.archiveClassifier.set('frontend-resources')
+    def env = "YG_FRONTEND_RESOURCES_LOCATION"
+    def value = System.getenv(env) ?: findProperty('gateway.frontend.resources.location')
+
+    task.inputs.property('location', String.valueOf(value))
+
+    if (value == null || value.isEmpty()) return
+
+    task.from(files(value)) { CopySpec spec ->
+        spec.into('gateway-static')
+    }
+
+
+}
+
+configurations {
+    frontend
+}
+
+artifacts {
+    frontend packFrontendResources
+}

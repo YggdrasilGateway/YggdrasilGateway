@@ -5,5 +5,6 @@ import com.kasukusakura.yggdrasilgateway.api.properties.SimpleProperties
 
 @EventSubscriber
 internal object FrontendProperties : SimpleProperties("frontend") {
-    var devUrl = "http://127.0.0.1:35774"
+    var devUrl = ""
+    var staticFilesLocation = ""
 }

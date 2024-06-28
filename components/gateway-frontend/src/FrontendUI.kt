@@ -10,10 +10,12 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.application.*
+import io.ktor.server.http.content.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
+import java.io.File
 import java.net.URI
 
 @EventSubscriber
@@ -38,13 +40,6 @@ internal object FrontendUI {
     @EventSubscriber.Handler(priority = EventPriority.LOWEST)
     fun YggdrasilHttpServerInitializeEvent.ModuleInitializeEvent.handle() {
         if (FrontendProperties.devUrl.isNotEmpty()) {
-
-            app.routing {
-                get("/hi") {
-                    call.respond("Pong!")
-                }
-            }
-
             app.routing {
                 head("{...}") {
                     val resp = httpClient.head(Url(URI.create(FrontendProperties.devUrl).resolve(call.request.uri)))
@@ -76,7 +71,20 @@ internal object FrontendUI {
                     })
                 }
             }
-
+        } else if (FrontendProperties.staticFilesLocation.isNotEmpty()) {
+            app.routing {
+                staticFiles("/", dir = File(FrontendProperties.staticFilesLocation)) {
+                    enableAutoHeadResponse()
+                    default("index.html")
+                }
+            }
+        } else {
+            app.routing {
+                staticResources("/", basePackage = "gateway-static") {
+                    default("index.html")
+                    enableAutoHeadResponse()
+                }
+            }
         }
     }
 }
