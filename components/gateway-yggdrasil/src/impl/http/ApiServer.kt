@@ -6,6 +6,7 @@ import com.kasukusakura.yggdrasilgateway.api.util.eventFire
 import com.kasukusakura.yggdrasilgateway.core.database.DatabaseConnectionManager.mysqlDatabase
 import com.kasukusakura.yggdrasilgateway.core.http.event.ApiRouteInitializeEvent
 import com.kasukusakura.yggdrasilgateway.core.http.response.ApiRejectedException
+import com.kasukusakura.yggdrasilgateway.core.module.message.MessagesModule
 import com.kasukusakura.yggdrasilgateway.yggdrasil.data.PlayerProfile
 import com.kasukusakura.yggdrasilgateway.yggdrasil.data.encode
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.PlayerInfo
@@ -132,7 +133,7 @@ internal object ApiServer {
                     for (task in targetRequests.values) {
                         val result = task.await()
                         if (result.isFailure && !skipError) {
-                            authorizedProfile.completeExceptionally(ApiRejectedException("Authorization servicing error."))
+                            authorizedProfile.completeExceptionally(ApiRejectedException(MessagesModule["yggdrasil.prohibit.service-error"]))
                         }
                         result.getOrNull()?.let { results.add(it) }
                     }
@@ -152,7 +153,7 @@ internal object ApiServer {
                             authorizedProfile
                         )
 
-                        authorizedProfile.completeExceptionally(ApiRejectedException("Multi authorization services replied."))
+                        authorizedProfile.completeExceptionally(ApiRejectedException(MessagesModule["yggdrasil.prohibit.multi-authorized"]))
                     }
                 }
             }
@@ -208,6 +209,13 @@ internal object ApiServer {
                     log.warn("Exception when processing authorization: {}", call.request.uri, err)
                 }
 
+                fun encodeErrorMessage(): String {
+                    return when (err) {
+                        is ApiRejectedException -> err.message
+                        else -> err.toString()
+                    }
+                }
+
                 if (YggdrasilServicesHolder.flags.enchantedErrorRejection) {
                     call.respondText(
                         contentType = ContentType.Application.Json.withCharset(Charsets.UTF_8),
@@ -216,7 +224,7 @@ internal object ApiServer {
                             id = REJECTION_UUID,
                             name = "\$REJECTION",
                             properties = listOf(
-                                PlayerProfile.Property("rejection.reason", err.toString()),
+                                PlayerProfile.Property("rejection.reason", encodeErrorMessage()),
                             )
                         ).encode().toString()
                     }
@@ -274,8 +282,12 @@ internal object ApiServer {
         }
         post("/api/profiles/minecraft") { }
 
+        get(Regex("/sessionserver/redirect(?<redirect>.+)")) {
+            call.respondRedirect(call.parameters["redirect"] ?: "/")
+        }
+
         route("{...}") {
-            handle { println(call.request.uri) }
+            handle { println(call.request.httpMethod.toString() + ": " + call.request.uri) }
         }
     }
 }

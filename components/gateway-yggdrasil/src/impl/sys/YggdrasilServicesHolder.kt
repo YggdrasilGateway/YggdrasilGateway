@@ -5,6 +5,7 @@ import com.kasukusakura.yggdrasilgateway.api.eventbus.EventSubscriber
 import com.kasukusakura.yggdrasilgateway.core.database.DatabaseConnectionManager.mysqlDatabase
 import com.kasukusakura.yggdrasilgateway.core.event.DatabaseInitializationEvent
 import com.kasukusakura.yggdrasilgateway.core.http.response.ApiRejectedException
+import com.kasukusakura.yggdrasilgateway.core.module.message.MessagesModule
 import com.kasukusakura.yggdrasilgateway.yggdrasil.data.PlayerProfile
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.PlayerInfo
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.PlayerInfoTable
@@ -83,7 +84,7 @@ internal object YggdrasilServicesHolder {
                     dbResult.flushChanges()
                 }
                 if (flags.prohibitMode && !dbResult.alwaysPermit && !skipRestrictTest) {
-                    throw ApiRejectedException("Prohibit mode enabled.")
+                    throw ApiRejectedException(MessagesModule["yggdrasil.prohibit.prohibit-reject"])
                 }
 
                 targetPlayer = dbResult
@@ -96,7 +97,7 @@ internal object YggdrasilServicesHolder {
             }
 
             if (flags.prohibitMode && !skipRestrictTest) {
-                throw ApiRejectedException("Prohibit mode enabled.")
+                throw ApiRejectedException(MessagesModule["yggdrasil.prohibit.prohibit-reject"])
             }
 
             var newEntryId: String
