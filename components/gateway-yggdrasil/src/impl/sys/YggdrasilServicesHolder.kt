@@ -46,7 +46,8 @@ internal object YggdrasilServicesHolder {
                 YggdrasilServicesTable.id,
                 YggdrasilServicesTable.comment,
                 YggdrasilServicesTable.urlPath,
-                YggdrasilServicesTable.active
+                YggdrasilServicesTable.active,
+                YggdrasilServicesTable.connection_timeout,
             )
             .forEach { result ->
                 val service = LoadedYggdrasilService(
@@ -54,6 +55,7 @@ internal object YggdrasilServicesHolder {
                     urlPath = result[YggdrasilServicesTable.urlPath]!!,
                     comment = result[YggdrasilServicesTable.comment],
                     active = result[YggdrasilServicesTable.active]!!,
+                    connectionTimeout = result[YggdrasilServicesTable.connection_timeout]!!
                 )
                 newServices[service.id] = service
             }

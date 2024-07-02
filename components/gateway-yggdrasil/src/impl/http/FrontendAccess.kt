@@ -62,6 +62,7 @@ internal object FrontendAccess {
                         "urlPath"(service.urlPath)
                         "active"(service.active)
                         "comment"(service.comment)
+                        "connectionTimeout"(service.connectionTimeout)
                     }
                 }
             }))
@@ -72,11 +73,15 @@ internal object FrontendAccess {
             val urlPath = conf.getAsJsonPrimitive("urlPath")?.asString ?: throw ApiRejectedException("Missing urlPath")
             val comment = conf.getAsJsonPrimitive("comment")?.asString
             val active = conf.getAsJsonPrimitive("active")?.asBoolean ?: true
+            val connectionTimeout = conf.getAsJsonPrimitive("connectionTimeout")?.asLong ?: 0
 
             kotlin.runCatching {
                 YggdrasilServiceProviders.constructService(urlPath)
             }.onFailure { err ->
                 throw ApiRejectedException("No service available for $urlPath -> $err")
+            }
+            if (connectionTimeout < 0) {
+                throw ApiRejectedException("Invalid timeout configuration")
             }
 
             val targetService = YggdrasilServicesHolder.services[id]
@@ -86,6 +91,7 @@ internal object FrontendAccess {
                     set(YggdrasilServicesTable.urlPath, urlPath)
                     set(YggdrasilServicesTable.comment, comment)
                     set(YggdrasilServicesTable.active, active)
+                    set(YggdrasilServicesTable.connection_timeout, connectionTimeout)
                 }
             } else {
                 mysqlDatabase.update(YggdrasilServicesTable) {
@@ -93,6 +99,7 @@ internal object FrontendAccess {
                     set(YggdrasilServicesTable.urlPath, urlPath)
                     set(YggdrasilServicesTable.comment, comment)
                     set(YggdrasilServicesTable.active, active)
+                    set(YggdrasilServicesTable.connection_timeout, connectionTimeout)
                 }
             }
             YggdrasilServicesHolder.reloadServices(DatabaseInitializationEvent)

@@ -1,5 +1,6 @@
 package com.kasukusakura.yggdrasilgateway.yggdrasil.impl.sys
 
+import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.provider.YggdrasilServiceWithTimeout
 import com.kasukusakura.yggdrasilgateway.yggdrasil.remote.YggdrasilServiceProviders
 
 internal class LoadedYggdrasilService(
@@ -7,8 +8,14 @@ internal class LoadedYggdrasilService(
     val urlPath: String,
     val comment: String?,
     val active: Boolean,
+    val connectionTimeout: Long,
 ) {
     val service by lazy {
-        YggdrasilServiceProviders.constructService(urlPath)
+        if (connectionTimeout == 0L) {
+            YggdrasilServiceProviders.constructService(urlPath)
+        } else YggdrasilServiceWithTimeout(
+            timeout = connectionTimeout,
+            delegate = YggdrasilServiceProviders.constructService(urlPath),
+        )
     }
 }
