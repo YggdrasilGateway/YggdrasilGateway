@@ -1,6 +1,8 @@
 package com.kasukusakura.yggdrasilgateway.yggdrasil.impl.http
 
+import com.google.gson.JsonArray
 import com.kasukusakura.yggdrasilgateway.api.eventbus.EventSubscriber
+import com.kasukusakura.yggdrasilgateway.api.util.buildJsonArray
 import com.kasukusakura.yggdrasilgateway.api.util.buildJsonObject
 import com.kasukusakura.yggdrasilgateway.api.util.eventFire
 import com.kasukusakura.yggdrasilgateway.core.database.DatabaseConnectionManager.mysqlDatabase
@@ -26,6 +28,7 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.*
 import org.ktorm.dsl.eq
 import org.ktorm.entity.filter
+import org.ktorm.entity.find
 import org.ktorm.entity.firstOrNull
 import org.ktorm.entity.sequenceOf
 import org.slf4j.LoggerFactory
@@ -280,7 +283,26 @@ internal object ApiServer {
             }
 
         }
-        post("/api/profiles/minecraft") { }
+        post("/api/profiles/minecraft") {
+            val req = call.receive<JsonArray>()
+            call.respondText(contentType = ContentType.Application.Json.withCharset(Charsets.UTF_8)) {
+                withContext(Dispatchers.IO) {
+                    buildJsonArray {
+                        val playersSeq = mysqlDatabase.sequenceOf(PlayerInfoTable)
+
+                        req.forEach { search ->
+                            val result =
+                                playersSeq.find { it.downstreamNameIgnoreCase eq search.asString } ?: return@forEach
+
+                            add(buildJsonObject {
+                                "id"(result.downstreamUuid)
+                                "name"(result.downstreamName)
+                            })
+                        }
+                    }.toString()
+                }
+            }
+        }
 
         get(Regex("/sessionserver/redirect(?<redirect>.+)")) {
             call.respondRedirect(call.parameters["redirect"] ?: "/")
