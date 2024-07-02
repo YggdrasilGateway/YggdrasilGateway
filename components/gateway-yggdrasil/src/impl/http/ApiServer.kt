@@ -52,6 +52,19 @@ internal object ApiServer {
         entry: PlayerInfo?,
     ): List<PlayerProfile.Property> {
         return asSequence()
+            // For Spigot BungeeGuard forwarding
+            .plus(PlayerProfile.Property("gatewaySource", service.id))
+            .plus(PlayerProfile.Property("gatewayFrom", old.name.orEmpty()))
+            .plus(PlayerProfile.Property("gatewayOrigin", old.id?.toString() ?: ""))
+            .plus(PlayerProfile.Property("gatewayData", buildJsonObject {
+                "source"(service.id)
+                "origin-name"(old.name)
+                "origin-uuid"(old.id?.toString())
+
+                entry?.let { "entry"(it.entryId); "alwaysPermit"(it.alwaysPermit) }
+
+            }.toString()))
+
             .plus(PlayerProfile.Property("yggdrasil.gateway.source", service.id))
             .plus(PlayerProfile.Property("yggdrasil.gateway.origin.name", old.name ?: ""))
             .plus(PlayerProfile.Property("yggdrasil.gateway.origin.uuid", old.id?.toString() ?: ""))
