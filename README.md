@@ -12,6 +12,8 @@ Yggdrasil Gateway 是一款旨于实现正版和外置登录共存的支持，�
 > Yggdrasil Gateway 只是一个 HTTP 服务器，只能提供登录验证服务。
 > 
 > 高级拒绝信息、聊天签名重设 等功能需要额外安装插件以得到功能支持。
+>
+> 另见 [YggdrasilGateway/GatewayEnhancement](https://github.com/YggdrasilGateway/GatewayEnhancement)
 
 ## 安装
 
