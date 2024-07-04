@@ -109,8 +109,8 @@ jobs:
           docker load -i yggdrasilgateway.tar.gz
           docker tag yggdrasilgateway karlatemp/yggdrasil-gateway:nightly
           docker tag yggdrasilgateway karlatemp/yggdrasil-gateway:${{ github.sha }}
-          docker pushkarlatemp/yggdrasil-gateway:nightly
-          docker pushkarlatemp/yggdrasil-gateway:${{ github.sha }}
+          docker push karlatemp/yggdrasil-gateway:nightly
+          docker push karlatemp/yggdrasil-gateway:${{ github.sha }}
 
   dependency-submission:
 
