@@ -10,6 +10,7 @@ import com.kasukusakura.yggdrasilgateway.yggdrasil.data.PlayerProfile
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.PlayerInfo
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.PlayerInfoTable
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.YggdrasilServicesTable
+import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.codesnippet.YggdrasilCodeSnippets
 import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.evt.UpstreamPlayerTransformEvent
 import com.kasukusakura.yggdrasilgateway.yggdrasil.util.parseUuid
 import com.kasukusakura.yggdrasilgateway.yggdrasil.util.toStringUnsigned
@@ -68,7 +69,7 @@ internal object YggdrasilServicesHolder {
     }
 
 
-    private fun generateEntryId(size: Int = 32) = buildString(size) {
+    internal fun generateEntryId(size: Int = 32) = buildString(size) {
         repeat(size) { append(entityIdTemplate.random(secureRandom)) }
     }
 
@@ -107,22 +108,47 @@ internal object YggdrasilServicesHolder {
                 newEntryId = generateEntryId()
             } while (mysqlDatabase.sequenceOf(PlayerInfoTable).any { it.entryId eq newEntryId })
 
-            var newName = profile.name!!
+
+            val upstreamName = profile.name!!
+            val upstreamUuid = profile.id!!
+            var newName = upstreamName
+            val triedGeneratedNames = mutableSetOf<String>()
+            var triedNameGenerateCount = 0
+
             while (mysqlDatabase.sequenceOf(PlayerInfoTable).any { it.downstreamNameIgnoreCase eq newName }) {
                 if (!flags.autoResolveName) {
                     throw ApiRejectedException("Player name already been used.")
                 }
 
-                newName = profile.name + generateEntryId(size = 4)
+                newName = YggdrasilCodeSnippets.nameConflictResolver.getCodeSnippet()
+                    .next(upstreamName, upstreamUuid, triedGeneratedNames)
+
+                triedGeneratedNames.add(newName)
+                triedNameGenerateCount++
+                if (triedNameGenerateCount > 40) {
+                    // TODO: push warn
+                    throw ApiRejectedException("Player name already been used.")
+                }
             }
 
-            var newUuid = profile.id!!
+
+            var newUuid = upstreamUuid
+            val triedGeneratedUuids = mutableSetOf<UUID>()
+            var triedUuidGenerateCount = 0
             while (mysqlDatabase.sequenceOf(PlayerInfoTable).any { it.downstreamUuid eq newUuid.toStringUnsigned() }) {
                 if (!flags.autoResolveUuidConflict) {
                     throw ApiRejectedException("Player uuid $newUuid conflict")
                 }
 
-                newUuid = UUID.randomUUID()
+                newUuid = YggdrasilCodeSnippets.uuidConflictResolver.getCodeSnippet()
+                    .next(upstreamName, upstreamUuid, triedGeneratedUuids)
+
+                triedGeneratedUuids.add(newUuid)
+                triedUuidGenerateCount++
+                if (triedUuidGenerateCount > 40) {
+                    // TODO: push warn
+                    throw ApiRejectedException("Player name already been used.")
+                }
             }
 
             val newEntry = PlayerInfo {
@@ -131,8 +157,8 @@ internal object YggdrasilServicesHolder {
 
                 declaredYggdrasilTree = service.id
 
-                upstreamName = profile.name!!
-                upstreamUuid = profile.id!!.toStringUnsigned()
+                this.upstreamName = profile.name!!
+                this.upstreamUuid = profile.id!!.toStringUnsigned()
 
                 downstreamName = newName
                 downstreamUuid = newUuid.toStringUnsigned()
