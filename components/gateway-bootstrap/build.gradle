@@ -55,7 +55,7 @@ tasks.register('buildDockerImage').configure {
             ps.println("FROM azul/zulu-openjdk:21-latest")
             ps.println("COPY " + outputPath.relativePath(basepath) + " /app")
             ps.println("WORKDIR /app/run")
-            ps.println("ENTRYPOINT bash /app/bin/start.sh")
+            ps.println("ENTRYPOINT [\"java\", \"-cp\", \"/app/lib/*\", \"com.kasukusakura.yggdrasilgateway.bootstrap.MainKt\"]")
         }
     }
 }
