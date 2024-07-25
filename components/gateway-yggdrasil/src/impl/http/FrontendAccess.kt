@@ -401,6 +401,8 @@ internal object FrontendAccess {
                                             }
                                     }
 
+
+                                    trans.commit()
                                 } finally {
                                     trans.connection.createStatement()
                                         .use { statement -> statement.execute("UNLOCK TABLES") }
