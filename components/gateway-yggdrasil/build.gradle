@@ -3,5 +3,6 @@ plugins {
 }
 
 dependencies {
+    implementation 'com.opencsv:opencsv:5.9'
     api project(':components:gateway-core')
 }

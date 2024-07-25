@@ -73,6 +73,14 @@ internal object YggdrasilServicesHolder {
         repeat(size) { append(entityIdTemplate.random(secureRandom)) }
     }
 
+    fun nextEntryIdWithTest(): String {
+        var newEntryId: String
+        do {
+            newEntryId = generateEntryId()
+        } while (mysqlDatabase.sequenceOf(PlayerInfoTable).any { it.entryId eq newEntryId })
+        return newEntryId
+    }
+
     @EventSubscriber.Handler(priority = EventPriority.HIGHEST)
     fun UpstreamPlayerTransformEvent.process() {
         mysqlDatabase.useTransaction {

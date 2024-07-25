@@ -9,8 +9,10 @@ import com.kasukusakura.yggdrasilgateway.api.util.eventFire
 import com.kasukusakura.yggdrasilgateway.core.database.DatabaseConnectionManager.mysqlDatabase
 import com.kasukusakura.yggdrasilgateway.core.event.DatabaseInitializationEvent
 import com.kasukusakura.yggdrasilgateway.core.http.event.ApiRouteInitializeEvent
+import com.kasukusakura.yggdrasilgateway.core.http.response.ApiFailedResponse
 import com.kasukusakura.yggdrasilgateway.core.http.response.ApiRejectedException
 import com.kasukusakura.yggdrasilgateway.core.http.response.ApiSuccessDataResponse
+import com.kasukusakura.yggdrasilgateway.yggdrasil.db.PlayerInfo
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.PlayerInfoTable
 import com.kasukusakura.yggdrasilgateway.yggdrasil.db.YggdrasilServicesTable
 import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.evt.UpstreamPlayerTransformEvent
@@ -21,6 +23,8 @@ import com.kasukusakura.yggdrasilgateway.yggdrasil.impl.sys.YggdrasilServicesHol
 import com.kasukusakura.yggdrasilgateway.yggdrasil.remote.YggdrasilServiceProviders
 import com.kasukusakura.yggdrasilgateway.yggdrasil.util.parseUuid
 import com.kasukusakura.yggdrasilgateway.yggdrasil.util.toStringUnsigned
+import com.opencsv.CSVReader
+import com.opencsv.CSVWriter
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -29,6 +33,7 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -259,6 +264,153 @@ internal object FrontendAccess {
                 }
             })
 
+        }
+
+        get("/csv/export") {
+            withContext(Dispatchers.IO) {
+                call.respondTextWriter(contentType = ContentType.Text.CSV.withCharset(Charsets.UTF_8)) {
+                    CSVWriter(this).use { csvWriter ->
+                        val lines = arrayOf(
+                            "entry-id",
+                            "origin",
+                            "upstream-name",
+                            "upstream-uuid",
+                            "downstream-name",
+                            "downstream-uuid",
+                            "always-permit",
+                        )
+                        csvWriter.writeNext(lines)
+                        mysqlDatabase.sequenceOf(PlayerInfoTable).forEach { player ->
+                            lines[0] = player.entryId
+                            lines[1] = player.declaredYggdrasilTree
+                            lines[2] = player.upstreamName
+                            lines[3] = player.upstreamUuid
+                            lines[4] = player.downstreamName
+                            lines[5] = player.downstreamUuid
+                            lines[6] = player.alwaysPermit.toString()
+                            csvWriter.writeNext(lines)
+                        }
+                    }
+                }
+            }
+        }
+        post("/csv/import") {
+            withContext(Dispatchers.IO) {
+
+                val override = call.request.queryParameters["override"]?.toBoolean() ?: false
+                var processed = false
+
+                val multipartData = call.receiveMultipart()
+                multipartData.forEachPart { part ->
+                    try {
+                        if (part.name == "files") {
+                            if (processed) return@forEachPart
+                            if (part !is PartData.FileItem) {
+                                throw ApiRejectedException("Part `files` is not a file")
+                            }
+
+                            processed = true
+                            mysqlDatabase.useTransaction { trans ->
+                                trans.connection.createStatement()
+                                    .use { statement -> statement.execute("LOCK TABLES yggdrasil_player_info READ") }
+                                trans.connection.createStatement()
+                                    .use { statement -> statement.execute("LOCK TABLES yggdrasil_player_info WRITE") }
+
+                                val effected = mutableSetOf<String>()
+                                val players = mysqlDatabase.sequenceOf(PlayerInfoTable)
+
+                                part.provider().asStream()
+                                    .bufferedReader(part.contentType?.charset() ?: Charsets.UTF_8)
+                                    .use { reader ->
+                                        val csvReader = CSVReader(reader)
+                                        val headers = csvReader.readNextSilently() ?: throw ApiRejectedException("Empty file found")
+
+                                        val indexes = mutableMapOf<String, Int>()
+                                        fun String.pushIndex() {
+                                            indexes[this] = headers.indexOf(this)
+                                            if (headers.indexOf(this) == -1) {
+                                                throw ApiRejectedException("Missing header $this")
+                                            }
+                                        }
+
+                                        fun String.parseBool(): Boolean = when (lowercase()) {
+                                            "yes", "true", "1", "on" -> true
+                                            else -> false
+                                        }
+
+                                        "origin".pushIndex()
+                                        "upstream-name".pushIndex()
+                                        "upstream-uuid".pushIndex()
+                                        "downstream-name".pushIndex()
+                                        "downstream-uuid".pushIndex()
+                                        "always-permit".pushIndex()
+
+                                        while (true) {
+                                            val nextLines = csvReader.readNext() ?: break
+
+                                            val target = players
+                                                .filter { it.declaredYggdrasilTree eq nextLines[indexes["origin"]!!] }
+                                                .filter {
+                                                    it.upstreamUuid eq nextLines[indexes["upstream-uuid"]!!].parseUuid()
+                                                        .toStringUnsigned()
+                                                }
+                                                .firstOrNull()
+
+                                            if (target == null) {
+                                                val entryId = YggdrasilServicesHolder.nextEntryIdWithTest()
+                                                players.add(PlayerInfo {
+                                                    this.entryId = entryId
+                                                    declaredYggdrasilTree = nextLines[indexes["origin"]!!]
+                                                    upstreamName = nextLines[indexes["upstream-name"]!!]
+                                                    upstreamUuid = nextLines[indexes["upstream-uuid"]!!].parseUuid()
+                                                        .toStringUnsigned()
+
+                                                    downstreamName = nextLines[indexes["downstream-name"]!!]
+                                                    downstreamUuid = nextLines[indexes["downstream-uuid"]!!].parseUuid()
+                                                        .toStringUnsigned()
+
+                                                    alwaysPermit = nextLines[indexes["always-permit"]!!].parseBool()
+                                                })
+                                                effected.add(entryId)
+                                            } else {
+                                                effected.add(target.entryId)
+
+
+                                                target.downstreamName = nextLines[indexes["downstream-name"]!!]
+                                                target.downstreamUuid =
+                                                    nextLines[indexes["downstream-uuid"]!!].parseUuid()
+                                                        .toStringUnsigned()
+
+                                                target.alwaysPermit = nextLines[indexes["always-permit"]!!].parseBool()
+
+                                                target.flushChanges()
+                                            }
+                                        }
+                                    }
+
+                                if (override) {
+                                    mysqlDatabase.from(PlayerInfoTable)
+                                        .select(PlayerInfoTable.entryId)
+                                        .forEach { row ->
+                                            val entryId = row[PlayerInfoTable.entryId]!!
+                                            if (!effected.contains(entryId)) {
+                                                mysqlDatabase.delete(PlayerInfoTable) { it.entryId eq entryId }
+                                            }
+                                        }
+                                }
+                            }
+                        }
+                    } finally {
+                        part.dispose()
+                    }
+                }
+
+                if (processed) {
+                    call.respond(ApiSuccessDataResponse {  })
+                } else {
+                    call.respond(ApiFailedResponse("No players.csv found.", 407))
+                }
+            }
         }
     }
 }
