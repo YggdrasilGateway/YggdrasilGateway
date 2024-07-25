@@ -311,6 +311,7 @@ internal object FrontendAccess {
 
                             processed = true
                             mysqlDatabase.useTransaction { trans ->
+                                trans.connection.autoCommit = false
                                 trans.connection.createStatement()
                                     .use { statement -> statement.execute("LOCK TABLES yggdrasil_player_info WRITE") }
                                 try {
@@ -432,6 +433,9 @@ internal object FrontendAccess {
 
 
                                     trans.commit()
+                                } catch (e: Throwable) {
+                                    trans.rollback()
+                                    throw e
                                 } finally {
                                     trans.connection.createStatement()
                                         .use { statement -> statement.execute("UNLOCK TABLES") }

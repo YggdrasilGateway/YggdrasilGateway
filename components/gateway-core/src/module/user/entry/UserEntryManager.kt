@@ -30,7 +30,9 @@ internal object UserEntryManager {
 
     @EventSubscriber.Handler
     private fun loadFromDb(event: DatabaseInitializationEvent) {
-        mysqlDatabase.useTransaction {
+        mysqlDatabase.useTransaction { trans ->
+            trans.connection.autoCommit = false
+
             mysqlDatabase.from(RoleTable)
                 .select(RoleTable.role, RoleTable.desc)
                 .forEach { result ->
@@ -58,7 +60,9 @@ internal object UserEntryManager {
     }
 
     private fun loadUserFromDb(uid: Int): UserImpl? {
-        mysqlDatabase.useTransaction {
+        mysqlDatabase.useTransaction { trans ->
+            trans.connection.autoCommit = false
+
             val userLookup = mysqlDatabase.from(UsersTable)
                 .select(UsersTable.email, UsersTable.username, UsersTable.active, UsersTable.reactiveTime)
                 .where { UsersTable.userid eq uid }

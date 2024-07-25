@@ -123,7 +123,9 @@ private object UserHttpApi {
 
             val req = call.receive<Req>()
             withContext(Dispatchers.IO) {
-                mysqlDatabase.useTransaction {
+                mysqlDatabase.useTransaction { trans ->
+                    trans.connection.autoCommit = false
+
                     val result = mysqlDatabase.from(UsersTable)
                         .select(UsersTable.password, UsersTable.passwordSalt)
                         .where { (UsersTable.userid eq principal.userid) }

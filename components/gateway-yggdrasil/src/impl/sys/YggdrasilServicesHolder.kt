@@ -83,7 +83,9 @@ internal object YggdrasilServicesHolder {
 
     @EventSubscriber.Handler(priority = EventPriority.HIGHEST)
     fun UpstreamPlayerTransformEvent.process() {
-        mysqlDatabase.useTransaction {
+        mysqlDatabase.useTransaction { trans ->
+            trans.connection.autoCommit = false
+
             val dbResult = mysqlDatabase.sequenceOf(PlayerInfoTable)
                 .filter { it.declaredYggdrasilTree eq service.id }
                 .filter { it.upstreamUuid eq profile.id!!.toStringUnsigned() }

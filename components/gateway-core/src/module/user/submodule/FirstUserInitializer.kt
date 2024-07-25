@@ -15,7 +15,9 @@ internal object FirstUserInitializer {
 
     @EventSubscriber.Handler(priority = EventPriority.HIGH)
     fun DatabaseInitializationEvent.handle() {
-        mysqlDatabase.useTransaction {
+        mysqlDatabase.useTransaction { trans ->
+            trans.connection.autoCommit = false
+
             val result = mysqlDatabase.from(UsersTable)
                 .select(count())
                 .rowSet
