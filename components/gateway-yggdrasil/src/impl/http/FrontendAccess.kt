@@ -312,91 +312,98 @@ internal object FrontendAccess {
                             processed = true
                             mysqlDatabase.useTransaction { trans ->
                                 trans.connection.createStatement()
-                                    .use { statement -> statement.execute("LOCK TABLES yggdrasil_player_info READ") }
-                                trans.connection.createStatement()
                                     .use { statement -> statement.execute("LOCK TABLES yggdrasil_player_info WRITE") }
+                                try {
 
-                                val effected = mutableSetOf<String>()
-                                val players = mysqlDatabase.sequenceOf(PlayerInfoTable)
+                                    val effected = mutableSetOf<String>()
+                                    val players = mysqlDatabase.sequenceOf(PlayerInfoTable)
 
-                                part.provider().asStream()
-                                    .bufferedReader(part.contentType?.charset() ?: Charsets.UTF_8)
-                                    .use { reader ->
-                                        val csvReader = CSVReader(reader)
-                                        val headers = csvReader.readNextSilently() ?: throw ApiRejectedException("Empty file found")
+                                    part.provider().asStream()
+                                        .bufferedReader(part.contentType?.charset() ?: Charsets.UTF_8)
+                                        .use { reader ->
+                                            val csvReader = CSVReader(reader)
+                                            val headers = csvReader.readNextSilently()
+                                                ?: throw ApiRejectedException("Empty file found")
 
-                                        val indexes = mutableMapOf<String, Int>()
-                                        fun String.pushIndex() {
-                                            indexes[this] = headers.indexOf(this)
-                                            if (headers.indexOf(this) == -1) {
-                                                throw ApiRejectedException("Missing header $this")
-                                            }
-                                        }
-
-                                        fun String.parseBool(): Boolean = when (lowercase()) {
-                                            "yes", "true", "1", "on" -> true
-                                            else -> false
-                                        }
-
-                                        "origin".pushIndex()
-                                        "upstream-name".pushIndex()
-                                        "upstream-uuid".pushIndex()
-                                        "downstream-name".pushIndex()
-                                        "downstream-uuid".pushIndex()
-                                        "always-permit".pushIndex()
-
-                                        while (true) {
-                                            val nextLines = csvReader.readNext() ?: break
-
-                                            val target = players
-                                                .filter { it.declaredYggdrasilTree eq nextLines[indexes["origin"]!!] }
-                                                .filter {
-                                                    it.upstreamUuid eq nextLines[indexes["upstream-uuid"]!!].parseUuid()
-                                                        .toStringUnsigned()
+                                            val indexes = mutableMapOf<String, Int>()
+                                            fun String.pushIndex() {
+                                                indexes[this] = headers.indexOf(this)
+                                                if (headers.indexOf(this) == -1) {
+                                                    throw ApiRejectedException("Missing header $this")
                                                 }
-                                                .firstOrNull()
+                                            }
 
-                                            if (target == null) {
-                                                val entryId = YggdrasilServicesHolder.nextEntryIdWithTest()
-                                                players.add(PlayerInfo {
-                                                    this.entryId = entryId
-                                                    declaredYggdrasilTree = nextLines[indexes["origin"]!!]
-                                                    upstreamName = nextLines[indexes["upstream-name"]!!]
-                                                    upstreamUuid = nextLines[indexes["upstream-uuid"]!!].parseUuid()
-                                                        .toStringUnsigned()
+                                            fun String.parseBool(): Boolean = when (lowercase()) {
+                                                "yes", "true", "1", "on" -> true
+                                                else -> false
+                                            }
 
-                                                    downstreamName = nextLines[indexes["downstream-name"]!!]
-                                                    downstreamUuid = nextLines[indexes["downstream-uuid"]!!].parseUuid()
-                                                        .toStringUnsigned()
+                                            "origin".pushIndex()
+                                            "upstream-name".pushIndex()
+                                            "upstream-uuid".pushIndex()
+                                            "downstream-name".pushIndex()
+                                            "downstream-uuid".pushIndex()
+                                            "always-permit".pushIndex()
 
-                                                    alwaysPermit = nextLines[indexes["always-permit"]!!].parseBool()
-                                                })
-                                                effected.add(entryId)
-                                            } else {
-                                                effected.add(target.entryId)
+                                            while (true) {
+                                                val nextLines = csvReader.readNext() ?: break
+
+                                                val target = players
+                                                    .filter { it.declaredYggdrasilTree eq nextLines[indexes["origin"]!!] }
+                                                    .filter {
+                                                        it.upstreamUuid eq nextLines[indexes["upstream-uuid"]!!].parseUuid()
+                                                            .toStringUnsigned()
+                                                    }
+                                                    .firstOrNull()
+
+                                                if (target == null) {
+                                                    val entryId = YggdrasilServicesHolder.nextEntryIdWithTest()
+                                                    players.add(PlayerInfo {
+                                                        this.entryId = entryId
+                                                        declaredYggdrasilTree = nextLines[indexes["origin"]!!]
+                                                        upstreamName = nextLines[indexes["upstream-name"]!!]
+                                                        upstreamUuid = nextLines[indexes["upstream-uuid"]!!].parseUuid()
+                                                            .toStringUnsigned()
+
+                                                        downstreamName = nextLines[indexes["downstream-name"]!!]
+                                                        downstreamUuid =
+                                                            nextLines[indexes["downstream-uuid"]!!].parseUuid()
+                                                                .toStringUnsigned()
+
+                                                        alwaysPermit = nextLines[indexes["always-permit"]!!].parseBool()
+                                                    })
+                                                    effected.add(entryId)
+                                                } else {
+                                                    effected.add(target.entryId)
 
 
-                                                target.downstreamName = nextLines[indexes["downstream-name"]!!]
-                                                target.downstreamUuid =
-                                                    nextLines[indexes["downstream-uuid"]!!].parseUuid()
-                                                        .toStringUnsigned()
+                                                    target.downstreamName = nextLines[indexes["downstream-name"]!!]
+                                                    target.downstreamUuid =
+                                                        nextLines[indexes["downstream-uuid"]!!].parseUuid()
+                                                            .toStringUnsigned()
 
-                                                target.alwaysPermit = nextLines[indexes["always-permit"]!!].parseBool()
+                                                    target.alwaysPermit =
+                                                        nextLines[indexes["always-permit"]!!].parseBool()
 
-                                                target.flushChanges()
+                                                    target.flushChanges()
+                                                }
                                             }
                                         }
+
+                                    if (override) {
+                                        mysqlDatabase.from(PlayerInfoTable)
+                                            .select(PlayerInfoTable.entryId)
+                                            .forEach { row ->
+                                                val entryId = row[PlayerInfoTable.entryId]!!
+                                                if (!effected.contains(entryId)) {
+                                                    mysqlDatabase.delete(PlayerInfoTable) { it.entryId eq entryId }
+                                                }
+                                            }
                                     }
 
-                                if (override) {
-                                    mysqlDatabase.from(PlayerInfoTable)
-                                        .select(PlayerInfoTable.entryId)
-                                        .forEach { row ->
-                                            val entryId = row[PlayerInfoTable.entryId]!!
-                                            if (!effected.contains(entryId)) {
-                                                mysqlDatabase.delete(PlayerInfoTable) { it.entryId eq entryId }
-                                            }
-                                        }
+                                } finally {
+                                    trans.connection.createStatement()
+                                        .use { statement -> statement.execute("UNLOCK TABLES") }
                                 }
                             }
                         }
@@ -406,7 +413,7 @@ internal object FrontendAccess {
                 }
 
                 if (processed) {
-                    call.respond(ApiSuccessDataResponse {  })
+                    call.respond(ApiSuccessDataResponse { })
                 } else {
                     call.respond(ApiFailedResponse("No players.csv found.", 407))
                 }
