@@ -344,9 +344,22 @@ internal object FrontendAccess {
                                             "downstream-name".pushIndex()
                                             "downstream-uuid".pushIndex()
                                             "always-permit".pushIndex()
+                                            val entryIdIndex = headers.indexOf("entry-id")
 
                                             while (true) {
                                                 val nextLines = csvReader.readNext() ?: break
+
+                                                val csvEntryId =
+                                                    if (entryIdIndex == -1) "" else nextLines[entryIdIndex]!!
+                                                if (csvEntryId.isNotBlank()) {
+                                                    mysqlDatabase.update(PlayerInfoTable) {
+                                                        set(
+                                                            PlayerInfoTable.entryId,
+                                                            YggdrasilServicesHolder.nextEntryIdWithTest()
+                                                        )
+                                                        where { it.entryId eq csvEntryId }
+                                                    }
+                                                }
 
                                                 val target = players
                                                     .filter { it.declaredYggdrasilTree eq nextLines[indexes["origin"]!!] }
@@ -357,7 +370,10 @@ internal object FrontendAccess {
                                                     .firstOrNull()
 
                                                 if (target == null) {
-                                                    val entryId = YggdrasilServicesHolder.nextEntryIdWithTest()
+                                                    val entryId = csvEntryId.ifBlank {
+                                                        YggdrasilServicesHolder.nextEntryIdWithTest()
+                                                    }
+
                                                     players.add(PlayerInfo {
                                                         this.entryId = entryId
                                                         declaredYggdrasilTree = nextLines[indexes["origin"]!!]
@@ -374,8 +390,9 @@ internal object FrontendAccess {
                                                     })
                                                     effected.add(entryId)
                                                 } else {
-                                                    effected.add(target.entryId)
-
+                                                    if (csvEntryId.isBlank()) {
+                                                        effected.add(target.entryId)
+                                                    }
 
                                                     target.downstreamName = nextLines[indexes["downstream-name"]!!]
                                                     target.downstreamUuid =
@@ -386,6 +403,18 @@ internal object FrontendAccess {
                                                         nextLines[indexes["always-permit"]!!].parseBool()
 
                                                     target.flushChanges()
+
+                                                    if (csvEntryId.isNotBlank()) {
+                                                        effected.add(csvEntryId)
+
+                                                        mysqlDatabase.update(PlayerInfoTable) {
+                                                            set(
+                                                                PlayerInfoTable.entryId,
+                                                                csvEntryId
+                                                            )
+                                                            where { it.entryId eq target.entryId }
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
