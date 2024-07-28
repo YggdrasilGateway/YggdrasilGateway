@@ -48,6 +48,7 @@ internal object YggdrasilServicesHolder {
                 YggdrasilServicesTable.comment,
                 YggdrasilServicesTable.urlPath,
                 YggdrasilServicesTable.active,
+                YggdrasilServicesTable.limited,
                 YggdrasilServicesTable.connection_timeout,
             )
             .forEach { result ->
@@ -56,6 +57,7 @@ internal object YggdrasilServicesHolder {
                     urlPath = result[YggdrasilServicesTable.urlPath]!!,
                     comment = result[YggdrasilServicesTable.comment],
                     active = result[YggdrasilServicesTable.active]!!,
+                    limited = result[YggdrasilServicesTable.limited]!!,
                     connectionTimeout = result[YggdrasilServicesTable.connection_timeout]!!
                 )
                 newServices[service.id] = service
@@ -96,8 +98,13 @@ internal object YggdrasilServicesHolder {
                     dbResult.upstreamName = profile.name!!
                     dbResult.flushChanges()
                 }
-                if (flags.prohibitMode && !dbResult.alwaysPermit && !skipRestrictTest) {
-                    throw ApiRejectedException(MessagesModule["yggdrasil.prohibit.prohibit-reject"])
+                if (!skipRestrictTest && !dbResult.alwaysPermit) {
+                    if (flags.prohibitMode) {
+                        throw ApiRejectedException(MessagesModule["yggdrasil.prohibit.prohibit-reject"])
+                    }
+                    if (service.limited) {
+                        throw ApiRejectedException(MessagesModule["yggdrasil.prohibit.service-limited"])
+                    }
                 }
 
                 targetPlayer = dbResult

@@ -69,6 +69,7 @@ create table if not exists yggdrasil_services
     urlPath                 varchar(256)                     not null,
     comment                 varchar(256)                     null,
     active                  boolean default true             not null,
+    limited                 boolean default false            not null,
     connection_timeout      int8  default 0                  not null,
     constraint entryId
         primary key (id)
@@ -79,6 +80,11 @@ create table if not exists yggdrasil_services
                 kotlin.runCatching {
                     statement.executeUpdate("""
 ALTER TABLE yggdrasil_services ADD COLUMN connection_timeout int8 default 0 not null;
+                    """.trimIndent())
+                }
+                kotlin.runCatching {
+                    statement.executeUpdate("""
+ALTER TABLE yggdrasil_services ADD COLUMN limited boolean default false not null;
                     """.trimIndent())
                 }
 

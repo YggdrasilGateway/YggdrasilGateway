@@ -10,5 +10,6 @@ internal object YggdrasilServicesTable : Table<Nothing>("yggdrasil_services") {
     val urlPath = varchar("urlPath")
     val comment = varchar("comment")
     val active = boolean("active")
+    val limited = boolean("limited")
     val connection_timeout = long("connection_timeout")
 }

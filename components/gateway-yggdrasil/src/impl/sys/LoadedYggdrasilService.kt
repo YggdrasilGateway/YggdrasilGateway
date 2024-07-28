@@ -9,6 +9,7 @@ internal class LoadedYggdrasilService(
     val comment: String?,
     val active: Boolean,
     val connectionTimeout: Long,
+    val limited: Boolean,
 ) {
     val service by lazy {
         if (connectionTimeout == 0L) {

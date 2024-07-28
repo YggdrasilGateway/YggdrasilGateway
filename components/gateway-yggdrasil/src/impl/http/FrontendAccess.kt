@@ -66,6 +66,7 @@ internal object FrontendAccess {
                         "id"(service.id)
                         "urlPath"(service.urlPath)
                         "active"(service.active)
+                        "limited"(service.limited)
                         "comment"(service.comment)
                         "connectionTimeout"(service.connectionTimeout)
                     }
@@ -78,6 +79,7 @@ internal object FrontendAccess {
             val urlPath = conf.getAsJsonPrimitive("urlPath")?.asString ?: throw ApiRejectedException("Missing urlPath")
             val comment = conf.getAsJsonPrimitive("comment")?.asString
             val active = conf.getAsJsonPrimitive("active")?.asBoolean ?: true
+            val limited = conf.getAsJsonPrimitive("limited")?.asBoolean ?: false
             val connectionTimeout = conf.getAsJsonPrimitive("connectionTimeout")?.asLong ?: 0
 
             kotlin.runCatching {
@@ -96,6 +98,7 @@ internal object FrontendAccess {
                     set(YggdrasilServicesTable.urlPath, urlPath)
                     set(YggdrasilServicesTable.comment, comment)
                     set(YggdrasilServicesTable.active, active)
+                    set(YggdrasilServicesTable.limited, limited)
                     set(YggdrasilServicesTable.connection_timeout, connectionTimeout)
                 }
             } else {
@@ -104,6 +107,7 @@ internal object FrontendAccess {
                     set(YggdrasilServicesTable.urlPath, urlPath)
                     set(YggdrasilServicesTable.comment, comment)
                     set(YggdrasilServicesTable.active, active)
+                    set(YggdrasilServicesTable.limited, limited)
                     set(YggdrasilServicesTable.connection_timeout, connectionTimeout)
                 }
             }
