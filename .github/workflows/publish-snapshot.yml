@@ -36,7 +36,7 @@ jobs:
 
       - name: Publish to DockerHub
         run: |
-          docker load -i yggdrasilgateway.tar.gz
+          docker load -i yggdrasilgateway.docker.tar.gz
           docker tag yggdrasilgateway karlatemp/yggdrasil-gateway:nightly
           docker tag yggdrasilgateway karlatemp/yggdrasil-gateway:${{ github.sha }}
           docker push karlatemp/yggdrasil-gateway:${{ github.sha }}

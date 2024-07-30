@@ -74,14 +74,14 @@ jobs:
 
       - name: Build docker image - save
         if: ${{ inputs.doUpload }}
-        run: docker save yggdrasilgateway | gzip > yggdrasilgateway.tar.gz
+        run: docker save yggdrasilgateway | gzip > yggdrasilgateway.docker.tar.gz
 
       - uses: actions/upload-artifact@v4
         if: ${{ inputs.doUpload }}
         name: "Upload Docker Image"
         with:
           name: docker-image
-          path: yggdrasilgateway.tar.gz
+          path: yggdrasilgateway.docker.tar.gz
 
       - uses: actions/upload-artifact@v4
         if: ${{ inputs.doUpload }}
