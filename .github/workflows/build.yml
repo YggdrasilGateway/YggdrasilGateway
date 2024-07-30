@@ -16,7 +16,7 @@ jobs:
     uses: ./.github/workflows/common-build.yml
     with:
       withFrontend: false
-      doUpload: true
+      doUpload: false
   build-all:
     uses: ./.github/workflows/common-build.yml
     with:
