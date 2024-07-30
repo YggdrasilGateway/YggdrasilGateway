@@ -2,7 +2,7 @@ name: Publish Snapshot
 
 on:
   push:
-    tags-ignore:
+    branches:
       - "**"
     paths-ignore:
       - 'docs/**'
