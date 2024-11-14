@@ -30,7 +30,7 @@ internal class ThirdPartyYggdrasilService(
         override fun apply(basePath: String): YggdrasilService? {
             @Suppress("HttpUrlsUsage")
             if (basePath.startsWith("http://") || basePath.startsWith("https://")) {
-                return ThirdPartyYggdrasilService(URI.create(basePath))
+                return ThirdPartyYggdrasilService(URI.create(basePath.removeSuffix("/") + "/"))
             }
             return null
         }
