@@ -30,6 +30,7 @@ internal object FirstUserInitializer {
                     set(UsersTable.email, "admin@localhost")
                     set(UsersTable.password, PasswordHasher.hashPassword("admin".toByteArray(), "admin".toByteArray()))
                     set(UsersTable.passwordSalt, "admin".toByteArray())
+                    set(UsersTable.creationTime, System.currentTimeMillis())
                 }
 
                 val uid = mysqlDatabase.from(UsersTable)
