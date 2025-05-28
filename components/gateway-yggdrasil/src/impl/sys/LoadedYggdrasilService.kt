@@ -19,4 +19,8 @@ internal class LoadedYggdrasilService(
             delegate = YggdrasilServiceProviders.constructService(urlPath),
         )
     }
+
+    override fun toString(): String {
+        return "RemoteService[$id,$urlPath/$connectionTimeout${if (limited) "/limited" else ""}]"
+    }
 }
