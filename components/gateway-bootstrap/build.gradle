@@ -26,6 +26,10 @@ distributions {
     main.distributionBaseName.set("YggdrasilGateway")
 }
 
+application {
+    mainClass.set('com.kasukusakura.yggdrasilgateway.bootstrap.MainKt')
+}
+
 tasks.register('buildDockerImage').configure {
     dependsOn('distZip')
     def outputPath = temporaryDir
